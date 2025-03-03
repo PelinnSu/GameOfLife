@@ -6,6 +6,6 @@ public class StartButton : MonoBehaviour
 
    public void StartSimulation()
     {
-        gameBoard.StartCoroutine(gameBoard.Simulate());
+        gameBoard.StartGame();
     }
 }

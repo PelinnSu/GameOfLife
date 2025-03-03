@@ -1,3 +1,5 @@
+using NUnit.Framework.Interfaces;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -12,7 +14,10 @@ public class GameBoard : MonoBehaviour
     [SerializeField] private Tile aliveTile;
     [SerializeField] private Tile deadTile;
     [SerializeField] private Pattern pattern;
+    private Coroutine simulationCoroutine;
+
     [SerializeField] private float updateInterval = 0.05f;
+    private bool gameRunning = false;
 
     private readonly HashSet<Vector3Int> aliveCells = new();
     private readonly HashSet<Vector3Int> cellsToCheck = new();
@@ -21,15 +26,15 @@ public class GameBoard : MonoBehaviour
     public int iterations { get; private set; }
     public float time { get; private set; }
 
-    private void OnEnable()
-    {
-        //StartCoroutine(Simulate());
-    }
     private void Start()
     {
         SetPattern(pattern);
     }
-  
+    private void Update()
+    {
+        HandleTouch();
+    }
+
     private void SetPattern(Pattern pattern)
     {
         Clear();
@@ -46,6 +51,26 @@ public class GameBoard : MonoBehaviour
         population = aliveCells.Count;
     }
 
+    private void HandleTouch()
+    {
+        if (Input.GetMouseButtonDown(0))
+        {
+            Vector3 worldPosition = Camera.main.ScreenToWorldPoint(new Vector3(Input.mousePosition.x, Input.mousePosition.y, 0));
+            Vector3Int touchedCell = currentState.WorldToCell(worldPosition);
+            PaintCellWithTouch(touchedCell);
+        }
+    }
+
+    private void PaintCellWithTouch(Vector3Int touchedCell)
+    {
+        if (!IsAlive(touchedCell))
+        {
+            currentState.SetTile(touchedCell, aliveTile);
+            aliveCells.Add((Vector3Int)touchedCell);
+            population = aliveCells.Count;
+        }
+    }
+
     private void Clear()
     {
         aliveCells.Clear();
@@ -57,15 +82,13 @@ public class GameBoard : MonoBehaviour
         time = 0f;
     }
 
-
-
     public IEnumerator Simulate()
     {
         Debug.Log("simulation started");
         var interval = new WaitForSeconds(updateInterval);
         yield return interval;
 
-        while (enabled)
+        while (gameRunning)
         {
             UpdateState();
 
@@ -151,4 +174,20 @@ public class GameBoard : MonoBehaviour
         return currentState.GetTile(cell) == aliveTile;
     }
 
+    public void StartGame()
+    {
+        if (gameRunning) return; // Prevent multiple starts
+        gameRunning = true;
+        simulationCoroutine = StartCoroutine(Simulate());
+    }
+
+    public void StopSimulation()
+    {
+        gameRunning = false; 
+        if (simulationCoroutine != null)
+        {
+            StopCoroutine(simulationCoroutine); 
+            simulationCoroutine = null;
+        }
+    }
 }
